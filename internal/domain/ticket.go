@@ -2,19 +2,19 @@ package domain
 
 import "time"
 
-type TickedStatus string
+type TicketStatus string
 
 const (
-	TickedStatusBooked    TickedStatus = "booked"
-	TickedStatusPurchased TickedStatus = "purchased"
-	TickedStatusCancelled TickedStatus = "cancelled"
+	TickedStatusBooked    TicketStatus = "booked"
+	TickedStatusPurchased TicketStatus = "purchased"
+	TickedStatusCancelled TicketStatus = "cancelled"
 )
 
 type Ticket struct {
 	ID        int64        `json:"id"`
 	UserID    int64        `json:"user_id"`
 	EventID   int64        `json:"event_id"`
-	Status    TickedStatus `json:"ticked_status"`
+	Status    TicketStatus `json:"ticked_status"`
 	CreatedAt time.Time    `json:"created_at"`
 	UpdatedAt time.Time    `json:"updated_at"`
 	DeletedAt *time.Time   `json:"deleted_at,omitempty"`
