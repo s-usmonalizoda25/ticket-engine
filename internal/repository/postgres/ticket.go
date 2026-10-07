@@ -21,7 +21,7 @@ func NewTicketRepository(pool *pgxpool.Pool) *TicketRepository {
 func (r *TicketRepository) Create(ctx context.Context, ticket *domain.Ticket) error {
 	const query = `
 		INSERT INTO tickets (event_id, user_id, status, created_at, updated_at)
-		VALUES ($1, %2, $3, NOW(), NOW())
+		VALUES ($1, $2, $3, NOW(), NOW())
 		RETURNING id, created_at, updated_at
 	`
 	err := r.pool.QueryRow(ctx, query, ticket.EventID, ticket.UserID, ticket.Status).Scan(
@@ -36,7 +36,7 @@ func (r *TicketRepository) GetByID(ctx context.Context, id int64) (*domain.Ticke
 	const query = `
 		SELECT id, event_id, user_id, status, created_at, updated_at, deleted_at
 		FROM tickets
-		WHERE id = $1 AND deleted_at is NULL
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 	var ticket domain.Ticket
 
@@ -71,7 +71,7 @@ func (r *TicketRepository) BuyTicketTx(ctx context.Context, eventID, userID int6
 	const selectQuery = `
 		SELECT tickets_left
 		FROM events
-		WHERE ID = $1 AND deleted_at IS NULL
+		WHERE id = $1 AND deleted_at IS NULL
 		FOR UPDATE
 	`
 
@@ -99,15 +99,15 @@ func (r *TicketRepository) BuyTicketTx(ctx context.Context, eventID, userID int6
 	}
 
 	const insertQuery = `
-		INSERT INTO tickets (event_id, user_id, created_at, updated_at)
-		VALUES($1, $2, $3, NOW(), NOW())
+		INSERT INTO tickets (event_id, user_id, status, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW())
 		RETURNING id, created_at, updated_at
 	`
 
 	ticket := &domain.Ticket{
 		EventID: eventID,
 		UserID:  userID,
-		Status:  domain.TickedStatusPurchased,
+		Status:  domain.TicketStatusPurchased,
 	}
 
 	err = tx.QueryRow(ctx, insertQuery, eventID, userID, ticket.Status).Scan(
@@ -120,6 +120,9 @@ func (r *TicketRepository) BuyTicketTx(ctx context.Context, eventID, userID int6
 		return nil, fmt.Errorf("failed to insert ticket in tx: %w", err)
 	}
 
-	return ticket, nil
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
 
+	return ticket, nil
 }

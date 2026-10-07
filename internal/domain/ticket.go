@@ -5,9 +5,9 @@ import "time"
 type TicketStatus string
 
 const (
-	TickedStatusBooked    TicketStatus = "booked"
-	TickedStatusPurchased TicketStatus = "purchased"
-	TickedStatusCancelled TicketStatus = "cancelled"
+	TicketStatusBooked    TicketStatus = "booked"
+	TicketStatusPurchased TicketStatus = "purchased"
+	TicketStatusCancelled TicketStatus = "cancelled"
 )
 
 type Ticket struct {
