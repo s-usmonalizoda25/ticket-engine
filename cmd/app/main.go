@@ -34,4 +34,6 @@ func main() {
 	defer pool.Close()
 
 	log.Info("Successfully connected to PostgreSQL connection pool!")
+
+	_ = pool
 }
