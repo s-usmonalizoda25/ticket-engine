@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/s-usmonalizoda25/ticket-engine/config"
@@ -27,10 +31,10 @@ func main() {
 		log.Fatal("Failed to load config", zap.Error(err))
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	initCtx, initCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer initCancel()
 
-	pool, err := postgres.NewPostgresDB(ctx, cfg.DBConnString)
+	pool, err := postgres.NewPostgresDB(initCtx, cfg.DBConnString)
 	if err != nil {
 		log.Fatal("Failed to connect to PostgreSQL pool", zap.Error(err))
 	}
@@ -56,8 +60,27 @@ func main() {
 		IdleTimeout:  15 * time.Second,
 	}
 
-	log.Info("HTTP server running on port :8080")
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal("HTTP server failed", zap.Error(err))
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		log.Info("HTTP server running on port :8080")
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal("HTTP server failed", zap.Error(err))
+		}
+	}()
+
+	<-stop
+	log.Info("Shutting down HTTP server gracefully...")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Error("HTTP server forced to shutdown", zap.Error(err))
+	} else {
+		log.Info("HTTP server stopped cleanly")
 	}
+
+	log.Info("Ticket Engine stopped successfully")
 }
